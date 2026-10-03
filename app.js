@@ -12,10 +12,8 @@ function fitWheelLabel(text, arc, radius, count){
   const chord=Math.max(42,2*labelR*Math.sin(Math.min(arc*.72,Math.PI/2)));
   const maxWidth=Math.min(radius*.48,chord*.76);
   const maxLines=2;
-  // Canvas 700px được thu xuống ~340–390px trên điện thoại, nên cỡ chữ
-  // nội bộ phải lớn hơn để khi hiển thị thực tế vẫn đạt khoảng 18–20px.
-  const maxFont=count<=6?38:count<=9?34:count<=12?29:25;
-  const minFont=count>=16?18:21;
+  const maxFont=count<=6?24:count<=9?20:count<=12?17:15;
+  const minFont=count>=16?11:12;
 
   function wrap(font){
     ctx.font=`800 ${font}px system-ui`;
