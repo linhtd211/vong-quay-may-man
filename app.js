@@ -8,11 +8,11 @@ function fitWheelLabel(text, arc, radius, count){
   if(!clean)return {lines:[''],font:18,maxWidth:100};
   // Vùng chữ nằm ở khoảng 58% bán kính. Chiều rộng hữu dụng được tính
   // theo dây cung của chính lát quay, vì vậy lát càng hẹp chữ càng nhỏ.
-  const labelR=radius*.60;
+  const labelR=radius*.57;
   const chord=Math.max(42,2*labelR*Math.sin(Math.min(arc*.72,Math.PI/2)));
-  const maxWidth=Math.min(radius*.62,chord*.88);
-  const maxLines=count>=14?2:3;
-  const maxFont=count<=6?28:count<=9?24:count<=12?20:16;
+  const maxWidth=Math.min(radius*.48,chord*.76);
+  const maxLines=2;
+  const maxFont=count<=6?24:count<=9?20:count<=12?17:15;
   const minFont=count>=16?11:12;
 
   function wrap(font){
@@ -66,7 +66,7 @@ function draw(){
     // Clip theo đúng hình lát quay; kể cả chuỗi rất dài cũng không thể đè sang lát bên cạnh.
     ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r-7,a+.018,a+arc-.018);ctx.closePath();ctx.clip();
     ctx.rotate(a+arc/2);
-    ctx.translate(r*.60,0);
+    ctx.translate(r*.57,0);
     ctx.rotate(Math.PI/2);
     ctx.fillStyle=(i%palette.length===2||i%palette.length===3||i%palette.length===4)?'#102044':'#fff';
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -78,9 +78,9 @@ function draw(){
   }
   ctx.beginPath();ctx.arc(0,0,52,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#e5eaf1';ctx.lineWidth=3;ctx.stroke();ctx.restore();
 }
-function render(){document.querySelector('#count').textContent=items.length;const box=document.querySelector('#items');box.innerHTML=items.length?'':'<div class="empty">Chưa có nội dung. Nhấn + để thêm.</div>';items.forEach((x,i)=>{const el=document.createElement('div');el.className='item';el.innerHTML=`<span class="dot" style="background:${palette[i%palette.length]}"></span><span></span><button class="trash">🗑</button>`;el.children[1].textContent=x;el.querySelector('.trash').onclick=()=>{if(spinning)return;items.splice(i,1);save();render();draw()};box.appendChild(el)});draw()}
+function render(){document.querySelector('#count').textContent=items.length;document.querySelector('#sheetCount').textContent=items.length;const box=document.querySelector('#items');box.innerHTML=items.length?'':'<div class="empty">Chưa có nội dung. Nhấn + để thêm.</div>';items.forEach((x,i)=>{const el=document.createElement('div');el.className='item';el.innerHTML=`<span class="dot" style="background:${palette[i%palette.length]}"></span><span></span><button class="trash">🗑</button>`;el.children[1].textContent=x;el.querySelector('.trash').onclick=()=>{if(spinning)return;items.splice(i,1);save();render();draw()};box.appendChild(el)});draw()}
 function open(id){document.querySelector('#'+id).classList.remove('hidden')} function close(id){document.querySelector('#'+id).classList.add('hidden')}
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>close(b.dataset.close));['addBtn','addBtnTop'].forEach(id=>document.querySelector('#'+id).onclick=()=>open('addModal'));
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>close(b.dataset.close));document.querySelector('#manageBtn').onclick=()=>open('manageModal');['addBtn','addBtnTop'].forEach(id=>document.querySelector('#'+id).onclick=()=>{close('manageModal');open('addModal')});document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)close(m.id)}));
 document.querySelector('#confirmAdd').onclick=()=>{const vals=document.querySelector('#bulkInput').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(vals.length){items.push(...vals);save();render();document.querySelector('#bulkInput').value='';close('addModal')}};
 document.querySelector('#resetBtn').onclick=()=>{if(confirm('Đặt lại danh sách mẫu?')){items=[...defaults];save();render()}};
 document.querySelector('#spinBtn').onclick=spin;document.querySelector('#againBtn').onclick=()=>{close('resultModal');setTimeout(spin,150)};
