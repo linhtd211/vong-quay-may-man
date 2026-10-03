@@ -3,25 +3,56 @@ const defaults=['Ăn phở','Uống cà phê','Xem phim','Đi du lịch','Ở nh
 let items=JSON.parse(localStorage.getItem('wheel-items')||'null')||defaults; let angle=0, spinning=false, winnerIndex=-1;
 const canvas=document.querySelector('#wheel'),ctx=canvas.getContext('2d');
 function save(){localStorage.setItem('wheel-items',JSON.stringify(items))}
-function splitWheelText(text,maxChars,maxLines=3){
+function fitWheelLabel(text, arc, radius, count){
   const clean=String(text).replace(/\s+/g,' ').trim();
-  if(!clean)return [''];
-  const words=clean.split(' '), lines=[]; let line='';
-  for(const word of words){
-    const next=line?line+' '+word:word;
-    if(next.length<=maxChars){line=next;continue}
-    if(line)lines.push(line);
-    line=word;
-    if(lines.length===maxLines-1)break;
+  if(!clean)return {lines:[''],font:18,maxWidth:100};
+  // Vùng chữ nằm ở khoảng 58% bán kính. Chiều rộng hữu dụng được tính
+  // theo dây cung của chính lát quay, vì vậy lát càng hẹp chữ càng nhỏ.
+  const labelR=radius*.60;
+  const chord=Math.max(42,2*labelR*Math.sin(Math.min(arc*.72,Math.PI/2)));
+  const maxWidth=Math.min(radius*.62,chord*.88);
+  const maxLines=count>=14?2:3;
+  const maxFont=count<=6?28:count<=9?24:count<=12?20:16;
+  const minFont=count>=16?11:12;
+
+  function wrap(font){
+    ctx.font=`800 ${font}px system-ui`;
+    const words=clean.split(' '), lines=[]; let line='';
+    for(let wi=0;wi<words.length;wi++){
+      const word=words[wi];
+      const candidate=line?line+' '+word:word;
+      if(ctx.measureText(candidate).width<=maxWidth){line=candidate;continue}
+      if(line){lines.push(line);line=''; if(lines.length>=maxLines)break}
+      // Từ đơn quá dài: cắt theo ký tự để không bao giờ chui khỏi lát.
+      if(ctx.measureText(word).width>maxWidth){
+        let part='';
+        for(const ch of word){
+          if(ctx.measureText(part+ch+'…').width>maxWidth){
+            if(part) lines.push(part+'…');
+            part='';
+            if(lines.length>=maxLines)break;
+          }
+          part+=ch;
+        }
+        if(lines.length<maxLines && part) line=part;
+      } else line=word;
+      if(lines.length>=maxLines)break;
+    }
+    if(line&&lines.length<maxLines)lines.push(line);
+    const represented=lines.join(' ');
+    if(represented.replace(/…/g,'').length < clean.length && lines.length){
+      let last=lines[lines.length-1].replace(/…$/,'');
+      while(last && ctx.measureText(last+'…').width>maxWidth) last=last.slice(0,-1);
+      lines[lines.length-1]=(last||'')+'…';
+    }
+    return lines.slice(0,maxLines);
   }
-  if(line&&lines.length<maxLines)lines.push(line);
-  const used=lines.join(' ').length;
-  if(used<clean.length){
-    let last=lines[maxLines-1]||lines[lines.length-1]||'';
-    last=last.slice(0,Math.max(2,maxChars-1)).trimEnd()+'…';
-    lines[Math.min(maxLines-1,lines.length-1)]=last;
+  for(let font=maxFont;font>=minFont;font--){
+    const lines=wrap(font);
+    if(lines.length<=maxLines && lines.every(x=>ctx.measureText(x).width<=maxWidth+1))
+      return {lines,font,maxWidth};
   }
-  return lines.slice(0,maxLines);
+  return {lines:wrap(minFont),font:minFont,maxWidth};
 }
 function draw(){
   const n=items.length,w=canvas.width,c=w/2,r=w*.47;
@@ -32,17 +63,17 @@ function draw(){
     const a=i*arc-Math.PI/2;
     ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,a,a+arc);ctx.closePath();ctx.fillStyle=palette[i%palette.length];ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
     ctx.save();
-    // Clip tuyệt đối theo lát quay: chữ dài không thể tràn sang ô khác.
-    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r-5,a+0.012,a+arc-0.012);ctx.closePath();ctx.clip();
-    ctx.rotate(a+arc/2);ctx.translate(r*.61,0);ctx.rotate(Math.PI/2);
-    ctx.fillStyle=(i%palette.length===2||i%palette.length===3||i%palette.length===4)?'#102044':'#fff';ctx.textAlign='center';ctx.textBaseline='middle';
-    const density=Math.max(0,Math.min(1,(n-4)/12));
-    const fs=Math.round(28-density*10);
-    const maxChars=Math.max(5,Math.round(16-density*7));
-    const lines=splitWheelText(items[i],maxChars,n>=13?2:3);
-    ctx.font=`800 ${fs}px system-ui`;
-    const lh=fs*1.05, y0=-(lines.length-1)*lh/2;
-    lines.forEach((line,j)=>ctx.fillText(line,0,y0+j*lh,Math.max(70,r*.58)));
+    // Clip theo đúng hình lát quay; kể cả chuỗi rất dài cũng không thể đè sang lát bên cạnh.
+    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r-7,a+.018,a+arc-.018);ctx.closePath();ctx.clip();
+    ctx.rotate(a+arc/2);
+    ctx.translate(r*.60,0);
+    ctx.rotate(Math.PI/2);
+    ctx.fillStyle=(i%palette.length===2||i%palette.length===3||i%palette.length===4)?'#102044':'#fff';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const fitted=fitWheelLabel(items[i],arc,r,n);
+    ctx.font=`800 ${fitted.font}px system-ui`;
+    const lh=fitted.font*1.08, y0=-(fitted.lines.length-1)*lh/2;
+    fitted.lines.forEach((line,j)=>ctx.fillText(line,0,y0+j*lh));
     ctx.restore();
   }
   ctx.beginPath();ctx.arc(0,0,52,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#e5eaf1';ctx.lineWidth=3;ctx.stroke();ctx.restore();
